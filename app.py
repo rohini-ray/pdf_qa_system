@@ -1,12 +1,14 @@
 import streamlit as st
+import os
+import time
+
 from pdf_loader import extract_text
 from chunker import create_chunks
 from query_system import PDFQA
-import os
 
-# ---------------------------------
-# Page Configuration
-# ---------------------------------
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
 
 st.set_page_config(
     page_title="PDF AI Assistant",
@@ -14,13 +16,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------------------------------
-# Custom CSS
-# ---------------------------------
+# -----------------------------
+# CUSTOM CSS
+# -----------------------------
 
 st.markdown("""
 <style>
-
 .main {
     padding-top: 1rem;
 }
@@ -32,17 +33,12 @@ st.markdown("""
 [data-testid="stSidebar"] {
     background-color: #f5f7fa;
 }
-
-h1 {
-    text-align: center;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
-# Sidebar
-# ---------------------------------
+# -----------------------------
+# SIDEBAR
+# -----------------------------
 
 with st.sidebar:
 
@@ -53,60 +49,58 @@ with st.sidebar:
     st.markdown("""
 ### Features
 
-✅ Upload PDF
+✅ PDF Upload
 
 ✅ Semantic Search
 
-✅ AI Question Answering
+✅ Fast Retrieval
 
-✅ Phi-3 Powered
+✅ Local AI
 
-✅ FAISS Retrieval
+✅ RAG Pipeline
 """)
 
     st.markdown("---")
 
-    st.success("Ready to analyze documents")
+    st.success("Ready")
 
-# ---------------------------------
-# Main Header
-# ---------------------------------
-
-st.markdown("""
-# 📚 PDF AI Assistant
-
-Upload a PDF and ask questions from it instantly.
-""")
-
-st.markdown("---")
-
-# ---------------------------------
-# Session State
-# ---------------------------------
+# -----------------------------
+# SESSION STATE
+# -----------------------------
 
 if "qa" not in st.session_state:
     st.session_state.qa = None
 
-if "pdf_loaded" not in st.session_state:
-    st.session_state.pdf_loaded = False
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ---------------------------------
-# Upload PDF
-# ---------------------------------
+if "pdf_processed" not in st.session_state:
+    st.session_state.pdf_processed = False
+
+# -----------------------------
+# HEADER
+# -----------------------------
+
+st.title("📚 PDF AI Assistant")
+
+st.write(
+    "Upload a PDF and ask questions instantly."
+)
+
+# -----------------------------
+# PDF UPLOAD
+# -----------------------------
 
 uploaded_pdf = st.file_uploader(
-    "📄 Upload a PDF File",
+    "Upload PDF",
     type=["pdf"]
 )
 
-# ---------------------------------
-# Process PDF
-# ---------------------------------
+# -----------------------------
+# PROCESS PDF ONLY ONCE
+# -----------------------------
 
-if uploaded_pdf is not None and not st.session_state.pdf_loaded:
+if uploaded_pdf is not None and not st.session_state.pdf_processed:
 
     os.makedirs("data", exist_ok=True)
 
@@ -116,11 +110,15 @@ if uploaded_pdf is not None and not st.session_state.pdf_loaded:
         f.write(uploaded_pdf.getbuffer())
 
     with st.spinner("📖 Reading PDF..."):
+
         text = extract_text(pdf_path)
 
-    with st.spinner("🧠 Creating Knowledge Base..."):
+    with st.spinner("🧠 Creating Index..."):
 
-        chunks = create_chunks(text)
+        chunks = create_chunks(
+            text,
+            chunk_size=1500
+        )
 
         qa = PDFQA()
 
@@ -128,45 +126,42 @@ if uploaded_pdf is not None and not st.session_state.pdf_loaded:
 
         st.session_state.qa = qa
 
-    st.session_state.pdf_loaded = True
+    st.session_state.pdf_processed = True
 
-    st.success("✅ PDF Loaded Successfully!")
+    st.success("✅ PDF Ready")
 
     col1, col2, col3 = st.columns(3)
 
-    with col1:
-        st.metric(
-            "Characters",
-            len(text)
-        )
+    col1.metric(
+        "Characters",
+        len(text)
+    )
 
-    with col2:
-        st.metric(
-            "Chunks",
-            len(chunks)
-        )
+    col2.metric(
+        "Chunks",
+        len(chunks)
+    )
 
-    with col3:
-        st.metric(
-            "Status",
-            "Ready"
-        )
+    col3.metric(
+        "Status",
+        "Ready"
+    )
 
-# ---------------------------------
-# Chat Interface
-# ---------------------------------
+# -----------------------------
+# CHAT AREA
+# -----------------------------
 
-if st.session_state.pdf_loaded:
+if st.session_state.pdf_processed:
 
-    st.markdown("## 💬 Ask Questions")
+    st.markdown("## 💬 Chat")
 
-    for message in st.session_state.messages:
+    for msg in st.session_state.messages:
 
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
     question = st.chat_input(
-        "Ask anything about your PDF..."
+        "Ask a question about your PDF..."
     )
 
     if question:
@@ -181,29 +176,25 @@ if st.session_state.pdf_loaded:
         with st.chat_message("user"):
             st.write(question)
 
-        import time
+        with st.chat_message("assistant"):
 
-with st.chat_message("assistant"):
+            with st.spinner("🤔 Thinking..."):
 
-    with st.spinner("🤔 Thinking..."):
+                start = time.time()
 
-        start = time.time()
+                answer = st.session_state.qa.ask(
+                    question
+                )
 
-        answer = st.session_state.qa.ask(
-            question
-        )
+                response_time = (
+                    time.time() - start
+                )
 
-        end = time.time()
+                st.write(answer)
 
-        st.write(answer)
-
-        st.caption(
-            f"⏱ Response Time: {end-start:.2f} seconds"
-        )
-
-        print(
-            f"Response Time: {end-start:.2f} seconds"
-        )
+                st.caption(
+                    f"⏱ {response_time:.2f} sec"
+                )
 
         st.session_state.messages.append(
             {
@@ -215,5 +206,5 @@ with st.chat_message("assistant"):
 else:
 
     st.info(
-        "👆 Upload a PDF to begin chatting with your document."
+        "👆 Upload a PDF to begin."
     )
