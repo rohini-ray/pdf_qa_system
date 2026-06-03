@@ -78,7 +78,7 @@ class PDFQA:
         """
 
         response = ollama.chat(
-            model="phi3",
+            model="gemma2:2b",
             messages=[
                 {
                     "role":"user",
