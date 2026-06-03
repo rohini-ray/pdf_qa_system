@@ -1,1 +1,1 @@
-OLLAMA_MODEL = "phi3"
+OLLAMA_MODEL = "gemma2:2b"
