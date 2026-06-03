@@ -1,10 +1,16 @@
 from sentence_transformers import SentenceTransformer
-from config import *
 
 model = SentenceTransformer(
-    EMBEDDING_MODEL
+    "all-MiniLM-L6-v2"
 )
 
-def generate_embedding(text):
+def generate_embeddings(chunks):
 
-    return model.encode(text)
+    return model.encode(
+        chunks,
+        show_progress_bar=True
+    )
+
+def generate_query_embedding(query):
+
+    return model.encode(query)

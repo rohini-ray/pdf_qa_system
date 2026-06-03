@@ -2,93 +2,89 @@ import faiss
 import numpy as np
 import ollama
 
-from embedding import generate_embedding
-from config import *
-
-# Load FAISS index
-index = faiss.read_index(
-    FAISS_INDEX
+from embedding import (
+    generate_embeddings,
+    generate_query_embedding
 )
 
-# Load stored chunks
-chunks = np.load(
-    CHUNKS_FILE,
-    allow_pickle=True
-)
+class PDFQA:
 
-# -------------------------
-# Retrieval Function
-# -------------------------
+    def __init__(self):
 
-def retrieve_context(question):
+        self.index = None
+        self.chunks = None
 
-    query_vector = generate_embedding(
-        question
-    )
+    def create_index(self, chunks):
 
-    query_vector = np.array(
-        [query_vector]
-    ).astype("float32")
+        self.chunks = chunks
 
-    distances, indices = index.search(
-        query_vector,
-        3
-    )
-
-    context = []
-
-    for idx in indices[0]:
-
-        context.append(
-            chunks[idx]
+        embeddings = generate_embeddings(
+            chunks
         )
 
-    return "\n".join(context)
+        embeddings = np.array(
+            embeddings
+        ).astype("float32")
 
-# -------------------------
-# QA Function
-# -------------------------
+        self.index = faiss.IndexFlatL2(
+            embeddings.shape[1]
+        )
 
-def ask_question(question):
+        self.index.add(
+            embeddings
+        )
 
-    context = retrieve_context(
-        question
-    )
+    def retrieve_context(
+            self,
+            question):
 
-    prompt = f"""
-    Context:
-    {context}
+        query_vector = generate_query_embedding(
+            question
+        )
 
-    Question:
-    {question}
+        query_vector = np.array(
+            [query_vector]
+        ).astype("float32")
 
-    Answer using only the context.
-    """
+        distances, indices = self.index.search(
+            query_vector,
+            3
+        )
 
-    response = ollama.chat(
-        model="phi3",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+        context = []
 
-    return response["message"]["content"]
+        for idx in indices[0]:
 
-# -------------------------
-# Chat Loop
-# -------------------------
+            context.append(
+                self.chunks[idx]
+            )
 
-while True:
+        return "\n".join(context)
 
-    question = input("Ask Question: ")
+    def ask(self, question):
 
-    if question.lower() == "exit":
-        break
+        context = self.retrieve_context(
+            question
+        )
 
-    answer = ask_question(question)
+        prompt = f"""
+        Context:
+        {context}
 
-    print("\nAnswer:")
-    print(answer)
+        Question:
+        {question}
+
+        Answer only from context.
+        """
+
+        response = ollama.chat(
+            model="phi3",
+            messages=[
+                {
+                    "role":"user",
+                    "content":prompt
+                }
+            ]
+        )
+
+        return response["message"]["content"]

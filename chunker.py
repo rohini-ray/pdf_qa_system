@@ -1,4 +1,4 @@
-def create_chunks(text, chunk_size=500):
+def create_chunks(text, chunk_size=2000):
 
     chunks = []
 
