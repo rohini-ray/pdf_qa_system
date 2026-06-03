@@ -48,7 +48,7 @@ class PDFQA:
 
         distances, indices = self.index.search(
             query_vector,
-            3
+            1
         )
 
         context = []
