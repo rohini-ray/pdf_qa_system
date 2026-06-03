@@ -181,15 +181,29 @@ if st.session_state.pdf_loaded:
         with st.chat_message("user"):
             st.write(question)
 
-        with st.chat_message("assistant"):
+        import time
 
-            with st.spinner("🤔 Thinking..."):
+with st.chat_message("assistant"):
 
-                answer = st.session_state.qa.ask(
-                    question
-                )
+    with st.spinner("🤔 Thinking..."):
 
-                st.write(answer)
+        start = time.time()
+
+        answer = st.session_state.qa.ask(
+            question
+        )
+
+        end = time.time()
+
+        st.write(answer)
+
+        st.caption(
+            f"⏱ Response Time: {end-start:.2f} seconds"
+        )
+
+        print(
+            f"Response Time: {end-start:.2f} seconds"
+        )
 
         st.session_state.messages.append(
             {
