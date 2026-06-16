@@ -2,9 +2,10 @@ import streamlit as st
 import os
 import time
 
-from pdf_loader import extract_text
-from chunker import create_chunks
-from query_system import PDFQA
+from src.pdf_loader import extract_text
+from src.chunker import create_chunks
+from src.query_system import PDFQA
+
 
 # -----------------------------
 # PAGE CONFIG
